@@ -230,10 +230,16 @@ This file-centric layout makes backup, migration, and inspection straightforward
 
 ## Docker
 
-Build image:
+Published image:
 
 ```bash
-docker build -t fathom-mcp .
+ghcr.io/chand1012/fathom-mcp:latest
+```
+
+Pull the latest image from GHCR:
+
+```bash
+docker pull ghcr.io/chand1012/fathom-mcp:latest
 ```
 
 Run container:
@@ -247,11 +253,17 @@ docker run --rm -p 8000:8000 \
   -e FATHOM_API_KEY="your_fathom_api_key" \
   -e FATHOM_WEBHOOK_SECRET="whsec_base64_encoded_secret" \
   -e SERVICE_API_KEY="your_service_api_key" \
-  fathom-mcp
+  ghcr.io/chand1012/fathom-mcp:latest
 ```
 
 The `./data` directory on your host is mounted to `/app/data` in the container,
 so the GGUF model and `vectors.db` persist between container restarts.
+
+Optional: if you want to build locally instead of using GHCR:
+
+```bash
+docker build -t fathom-mcp .
+```
 
 ---
 

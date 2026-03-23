@@ -18,6 +18,15 @@ POST /sync
     search_meeting_transcripts, get_meeting, get_meeting_transcript.
 """
 
+# Standard library
+import sys
+from pathlib import Path
+
+# Ensure src-layout imports work when running as a script in Docker or locally.
+SRC_DIR = Path(__file__).resolve().parent / "src"
+if SRC_DIR.exists() and str(SRC_DIR) not in sys.path:
+    sys.path.insert(0, str(SRC_DIR))
+
 # Load environment variables from .env file at the very beginning
 from fathom_mcp.vector.embedder import ensure_embedding_model
 from fathom_mcp.vector.database import init_database
@@ -34,12 +43,6 @@ import asyncio
 from dotenv import load_dotenv
 
 load_dotenv()
-
-# Standard library
-
-# Third-party
-
-# Local application
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

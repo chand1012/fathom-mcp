@@ -10,8 +10,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN curl -LsSf https://astral.sh/uv/install.sh | sh
 ENV PATH="/root/.local/bin/:$PATH"
 
-# Copy project metadata first (best for layer caching)
-COPY pyproject.toml ./
+# Copy dependency metadata first (best for layer caching)
+COPY pyproject.toml uv.lock ./
 
 # Sync dependencies without project code
 RUN UV_COMPILE_BYTECODE=1 UV_NO_DEV=1 uv sync --frozen

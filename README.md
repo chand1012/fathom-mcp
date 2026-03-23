@@ -275,7 +275,7 @@ Run container:
 mkdir -p ./data
 
 docker run --rm -p 8000:8000 \
-  -v "$(pwd)/data:/app/data" \
+  -v "$(pwd)/data:/data" \
   -e FATHOM_API_URL="https://api.fathom.video" \
   -e FATHOM_API_KEY="your_fathom_api_key" \
   -e FATHOM_WEBHOOK_SECRET="whsec_base64_encoded_secret" \
@@ -283,8 +283,9 @@ docker run --rm -p 8000:8000 \
   ghcr.io/chand1012/fathom-mcp:latest
 ```
 
-The `./data` directory on your host is mounted to `/app/data` in the container,
-so the GGUF model and `vectors.db` persist between container restarts.
+The `./data` directory on your host is mounted to `/data` in the container,
+so both `/data/bge-small-en-v1.5-q8_0.gguf` and `/data/vectors.db` persist
+between container restarts.
 
 Optional: if you want to build locally instead of using GHCR:
 

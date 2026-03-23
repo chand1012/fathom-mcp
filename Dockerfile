@@ -35,6 +35,7 @@ WORKDIR /app
 
 # Copy prebuilt environment and app files, then switch to non-root.
 COPY --from=builder --chown=appuser:appuser /app /app
+RUN mkdir -p /data && chown -R appuser:appuser /data
 
 USER appuser
 
@@ -43,6 +44,10 @@ ENV VIRTUAL_ENV=/app/.venv
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONPATH=/app/src
+ENV VECTOR_DB_PATH=/data/vectors.db
+ENV EMBEDDING_MODEL_PATH=/data/bge-small-en-v1.5-q8_0.gguf
+
+VOLUME ["/data"]
 
 EXPOSE 8000
 

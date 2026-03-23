@@ -1,0 +1,11 @@
+{
+  "cSpell.words": [
+    "embedder"
+  ],
+  "chat.tools.terminal.autoApprove": {
+    "/^uv run ruff check src/fathom_mcp/api/client\\.py src/fathom_mcp/api/service\\.py test_full_workflow\\.py$/": {
+      "approve": true,
+      "matchCommandLine": true
+    }
+  }
+}

@@ -133,6 +133,33 @@ uv run --reload main.py
 
 Server defaults to `http://localhost:8000`.
 
+### 5) Configure the Fathom webhook (recommended)
+
+To receive near real-time meeting updates, configure Fathom to send `newMeeting`
+events to this server.
+
+Webhook endpoint:
+
+```text
+POST /webhook
+```
+
+Requirements:
+
+- Your endpoint must be publicly accessible from the internet.
+- Your endpoint must be served over HTTPS (valid TLS certificate).
+- The webhook secret configured in Fathom must match `FATHOM_WEBHOOK_SECRET`.
+
+Typical production URL example:
+
+```text
+https://your-domain.com/webhook
+```
+
+If running locally, expose your service through an HTTPS tunnel/reverse proxy
+(for example: Cloudflare Tunnel, ngrok, or a public ingress) and use that
+public HTTPS URL in Fathom.
+
 ---
 
 ## API and MCP Endpoints

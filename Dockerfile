@@ -45,7 +45,9 @@ ENV PYTHONPATH=/app/src
 # Bytecode compilation for faster startup
 ENV UV_COMPILE_BYTECODE=1
 ENV UV_LINK_MODE=copy
+ENV VIRTUAL_ENV=/app/.venv
+ENV PATH="/app/.venv/bin:/root/.local/bin/:$PATH"
 
 EXPOSE 8000
 
-CMD ["uv", "run", "uvicorn", "main:api", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "main:api", "--host", "0.0.0.0", "--port", "8000"]

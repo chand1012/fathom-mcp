@@ -283,6 +283,12 @@ docker run --rm -p 8000:8000 \
   ghcr.io/chand1012/fathom-mcp:latest
 ```
 
+If you prefer files on the host to be owned by your current user, add:
+
+```bash
+-u "$(id -u):$(id -g)"
+```
+
 The `./data` directory on your host is mounted to `/data` in the container,
 so both `/data/bge-small-en-v1.5-q8_0.gguf` and `/data/vectors.db` persist
 between container restarts.

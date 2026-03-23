@@ -37,8 +37,6 @@ WORKDIR /app
 COPY --from=builder --chown=appuser:appuser /app /app
 RUN mkdir -p /data && chown -R appuser:appuser /data
 
-USER appuser
-
 ENV PATH="/app/.venv/bin:$PATH"
 ENV VIRTUAL_ENV=/app/.venv
 ENV PYTHONUNBUFFERED=1

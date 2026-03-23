@@ -3,8 +3,10 @@ FROM python:3.14-slim AS build
 
 WORKDIR /app
 
-# Install uv
+# Install uv + native build toolchain for llama-cpp-python
 RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    cmake \
     curl \
     && rm -rf /var/lib/apt/lists/*
 RUN curl -LsSf https://astral.sh/uv/install.sh | sh

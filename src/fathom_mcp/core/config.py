@@ -9,6 +9,12 @@ from pydantic_settings import BaseSettings
 
 cores = os.cpu_count() or 2
 default_threads = cores // 2
+PLACEHOLDER_API_KEYS = {
+    "your-service-api-key-here",
+    "your_service_api_key",
+    "changeme",
+    "replace-me",
+}
 
 
 class Settings(BaseSettings):
@@ -90,6 +96,14 @@ class Settings(BaseSettings):
     @model_validator(mode="after")
     def set_default_embedding_model_path(self) -> "Settings":
         """Store the embedding model beside the vector database by default."""
+        service_api_key = self.service_api_key.strip()
+        if not service_api_key or service_api_key.lower() in PLACEHOLDER_API_KEYS:
+            raise ValueError(
+                "SERVICE_API_KEY must be set to a non-placeholder value."
+            )
+
+        self.service_api_key = service_api_key
+
         if not self.embedding_model_path:
             db_path = Path(self.vector_db_path).expanduser()
             self.embedding_model_path = str(

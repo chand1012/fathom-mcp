@@ -102,7 +102,7 @@ Create a `.env` file in the project root:
 FATHOM_API_URL=https://api.fathom.ai/external/v1
 FATHOM_API_KEY=your_fathom_api_key
 FATHOM_WEBHOOK_SECRET=whsec_base64_encoded_secret
-SERVICE_API_KEY=your_service_api_key
+SERVICE_API_KEY=generate_a_unique_random_secret_for_this_server
 
 # Optional (defaults shown)
 HOST=0.0.0.0
@@ -116,6 +116,7 @@ EMBEDDING_MODEL_URL=https://huggingface.co/ggml-org/bge-small-en-v1.5-Q8_0-GGUF/
 Notes:
 
 - Environment names are case-insensitive in this project configuration.
+- `SERVICE_API_KEY` must be a real secret, not a placeholder such as `your_service_api_key`.
 - On first startup, the embedding model is downloaded automatically if missing.
 - If `EMBEDDING_MODEL_PATH` already exists, startup stays fully local for embedding operations.
 
@@ -175,6 +176,7 @@ public HTTPS URL in Fathom.
 
 - `/sync`, `/tools/*`, and `/mcp/` require:
   - `Authorization: Bearer <SERVICE_API_KEY>`
+  - `X-API-Key: <SERVICE_API_KEY>` for FastAPI routes (`/sync`, `/tools/*`)
   - OR localhost origin for selected FastAPI routes (`/sync`, `/tools/*`).
 - `/webhook` requires valid Svix-style signature headers:
   - `webhook-id`
@@ -188,6 +190,10 @@ Trigger sync:
 ```bash
 curl -X POST http://localhost:8000/sync \
   -H "Authorization: Bearer ${SERVICE_API_KEY}"
+
+# Equivalent FastAPI auth header:
+curl -X POST http://localhost:8000/sync \
+  -H "X-API-Key: ${SERVICE_API_KEY}"
 ```
 
 Search meetings:
@@ -279,7 +285,7 @@ docker run --rm -p 8000:8000 \
   -e FATHOM_API_URL="https://api.fathom.video" \
   -e FATHOM_API_KEY="your_fathom_api_key" \
   -e FATHOM_WEBHOOK_SECRET="whsec_base64_encoded_secret" \
-  -e SERVICE_API_KEY="your_service_api_key" \
+  -e SERVICE_API_KEY="generate_a_unique_random_secret_for_this_server" \
   ghcr.io/chand1012/fathom-mcp:latest
 ```
 

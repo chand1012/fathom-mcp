@@ -38,6 +38,22 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
+def _extract_service_api_key(
+    authorization: str | None,
+    x_api_key: str | None,
+) -> str | None:
+    """Return the candidate service API key from supported auth headers."""
+    if authorization:
+        scheme, _, token = authorization.partition(" ")
+        if scheme.lower() == "bearer" and token:
+            return token.strip()
+
+    if x_api_key:
+        return x_api_key.strip() or None
+
+    return None
+
+
 # ---------------------------------------------------------------------------
 # Auth dependency
 # ---------------------------------------------------------------------------
@@ -46,10 +62,11 @@ router = APIRouter()
 async def require_local_or_apikey(
     request: Request,
     authorization: Annotated[str | None, Header()] = None,
+    x_api_key: Annotated[str | None, Header(alias="X-API-Key")] = None,
 ) -> None:
     """
     Dependency that permits requests originating from localhost OR bearing
-    the service API key as a Bearer token.
+    the service API key as a Bearer token or X-API-Key header.
 
     Raises:
         HTTPException: 401 if neither condition is met.
@@ -58,14 +75,17 @@ async def require_local_or_apikey(
     if client_host in {"127.0.0.1", "::1", "localhost"}:
         return
 
-    if authorization and authorization.startswith("Bearer "):
-        token = authorization[len("Bearer "):]
-        if hmac.compare_digest(token, settings.service_api_key):
-            return
+    token = _extract_service_api_key(
+        authorization=authorization, x_api_key=x_api_key)
+    if token and hmac.compare_digest(token, settings.service_api_key):
+        return
 
     raise HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Valid API key required, or request must originate from localhost.",
+        detail=(
+            "Valid API key required via Authorization: Bearer <key> or X-API-Key, "
+            "or request must originate from localhost."
+        ),
         headers={"WWW-Authenticate": "Bearer"},
     )
 
@@ -127,9 +147,9 @@ async def trigger_sync(background_tasks: BackgroundTasks) -> dict:
     """
     Trigger a full download of all recent meetings from the Fathom API.
 
-    Requires either a valid ``Authorization: Bearer <service_api_key>`` header
-    or must be called from localhost.  Returns 202 immediately; sync runs in the
-    background.
+    Requires either a valid ``Authorization: Bearer <service_api_key>`` or
+    ``X-API-Key: <service_api_key>`` header, or must be called from localhost.
+    Returns 202 immediately; sync runs in the background.
     """
     background_tasks.add_task(fetch_and_store_recent_meetings)
     return {"status": "sync started"}

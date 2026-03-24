@@ -30,9 +30,8 @@ COPY . .
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --locked --no-dev --compile-bytecode
 
-RUN useradd --create-home --shell /bin/bash appuser \
-    && mkdir -p /data \
-    && chown -R appuser:appuser /app /data
+RUN mkdir -p /data \
+    && chmod 0777 /data
 
 ENV PATH="/app/.venv/bin:$PATH"
 ENV VIRTUAL_ENV=/app/.venv
@@ -49,7 +48,5 @@ EXPOSE 8000
 # Keep healthcheck lightweight and dependency-free.
 HEALTHCHECK --interval=30s --timeout=10s --start-period=20s --retries=3 \
     CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/openapi.json', timeout=5)" || exit 1
-
-USER appuser
 
 CMD ["uvicorn", "main:api", "--host", "0.0.0.0", "--port", "8000"]

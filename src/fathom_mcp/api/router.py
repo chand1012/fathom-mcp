@@ -1,7 +1,6 @@
 """FastAPI router: webhook ingest, manual sync trigger, and tool endpoints."""
 
 # Standard library
-import hmac
 import json
 import logging
 
@@ -9,7 +8,6 @@ import logging
 from fastapi import (
     APIRouter,
     BackgroundTasks,
-    Depends,
     Header,
     HTTPException,
     Query,
@@ -36,58 +34,6 @@ from fathom_mcp.webhooks.handler import process_new_meeting, validate_webhook_si
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
-
-
-def _extract_service_api_key(
-    authorization: str | None,
-    x_api_key: str | None,
-) -> str | None:
-    """Return the candidate service API key from supported auth headers."""
-    if authorization:
-        scheme, _, token = authorization.partition(" ")
-        if scheme.lower() == "bearer" and token:
-            return token.strip()
-
-    if x_api_key:
-        return x_api_key.strip() or None
-
-    return None
-
-
-# ---------------------------------------------------------------------------
-# Auth dependency
-# ---------------------------------------------------------------------------
-
-
-async def require_local_or_apikey(
-    request: Request,
-    authorization: Annotated[str | None, Header()] = None,
-    x_api_key: Annotated[str | None, Header(alias="X-API-Key")] = None,
-) -> None:
-    """
-    Dependency that permits requests originating from localhost OR bearing
-    the service API key as a Bearer token or X-API-Key header.
-
-    Raises:
-        HTTPException: 401 if neither condition is met.
-    """
-    client_host = (request.client.host if request.client else "") or ""
-    if client_host in {"127.0.0.1", "::1", "localhost"}:
-        return
-
-    token = _extract_service_api_key(
-        authorization=authorization, x_api_key=x_api_key)
-    if token and hmac.compare_digest(token, settings.service_api_key):
-        return
-
-    raise HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail=(
-            "Valid API key required via Authorization: Bearer <key> or X-API-Key, "
-            "or request must originate from localhost."
-        ),
-        headers={"WWW-Authenticate": "Bearer"},
-    )
 
 
 # ---------------------------------------------------------------------------
@@ -141,7 +87,6 @@ async def receive_webhook(
 @router.post(
     "/sync",
     status_code=status.HTTP_202_ACCEPTED,
-    dependencies=[Depends(require_local_or_apikey)],
 )
 async def trigger_sync(background_tasks: BackgroundTasks) -> dict:
     """
@@ -162,7 +107,6 @@ async def trigger_sync(background_tasks: BackgroundTasks) -> dict:
 
 @router.get(
     "/tools/search_meetings",
-    dependencies=[Depends(require_local_or_apikey)],
     tags=["tools"],
     summary="Search meetings by title and/or date range",
 )
@@ -198,7 +142,6 @@ async def tool_search_meetings(
 
 @router.get(
     "/tools/search_transcripts",
-    dependencies=[Depends(require_local_or_apikey)],
     tags=["tools"],
     summary="Semantic search across all meeting transcripts",
 )
@@ -215,7 +158,6 @@ async def tool_search_transcripts(
 
 @router.get(
     "/tools/search_meeting_transcripts",
-    dependencies=[Depends(require_local_or_apikey)],
     tags=["tools"],
     summary="Semantic search within a single meeting's transcript",
 )
@@ -233,7 +175,6 @@ async def tool_search_meeting_transcripts(
 
 @router.get(
     "/tools/get_meeting",
-    dependencies=[Depends(require_local_or_apikey)],
     tags=["tools"],
     summary="Get full details for a meeting by ID",
 )
@@ -250,7 +191,6 @@ async def tool_get_meeting(
 
 @router.get(
     "/tools/get_meeting_transcript",
-    dependencies=[Depends(require_local_or_apikey)],
     tags=["tools"],
     summary="Get all transcript chunks for a meeting",
 )

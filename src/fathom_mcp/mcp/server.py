@@ -1,16 +1,13 @@
 """FastMCP server definition and tool registrations."""
 
 # Standard library
-import hmac
 import logging
 from typing import Annotated
 
 # Third-party
 from fastmcp import FastMCP
-from fastmcp.server.auth.providers.debug import DebugTokenVerifier
 
 # Local application
-from fathom_mcp.core.config import settings
 from fathom_mcp.vector.database import (
     get_meeting_by_id,
     get_meeting_transcripts,
@@ -23,30 +20,12 @@ from fathom_mcp.vector.embedder import Embedder
 
 logger = logging.getLogger(__name__)
 
-# ---------------------------------------------------------------------------
-# Auth — validate bearer token against the service API key
-# ---------------------------------------------------------------------------
-
-
-def _build_verifier() -> DebugTokenVerifier:
-    """
-    Return a DebugTokenVerifier that performs a constant-time comparison of
-    the incoming Bearer token against the configured service API key.
-
-    Capturing the key at construction time prevents repeated attribute lookups
-    and makes it easier to reason about what secret is in use.
-    """
-    api_key = settings.service_api_key
-    return DebugTokenVerifier(
-        validate=lambda token: hmac.compare_digest(token, api_key),
-    )
-
 
 # ---------------------------------------------------------------------------
 # Server instance
 # ---------------------------------------------------------------------------
 
-mcp = FastMCP("Fathom MCP", auth=_build_verifier())
+mcp = FastMCP("Fathom MCP")
 
 
 # ---------------------------------------------------------------------------
@@ -92,7 +71,8 @@ async def search_meetings(
         for meeting in search_meetings_by_date_range(start_date, end_date, limit=limit):
             seen[meeting["id"]] = meeting
 
-    sorted_results = sorted(seen.values(), key=lambda m: m["created_at"], reverse=True)
+    sorted_results = sorted(
+        seen.values(), key=lambda m: m["created_at"], reverse=True)
     return sorted_results[:limit]
 
 
@@ -102,7 +82,8 @@ async def search_transcripts(
         str,
         "Natural language query to find semantically similar transcript passages",
     ],
-    limit: Annotated[int, "Maximum number of transcript chunks to return"] = 10,
+    limit: Annotated[int,
+                     "Maximum number of transcript chunks to return"] = 10,
 ) -> list[dict]:
     """
     Search all meeting transcripts using semantic (vector) similarity.
@@ -122,7 +103,8 @@ async def search_meeting_transcripts(
         str,
         "Natural language query to find semantically similar transcript passages",
     ],
-    limit: Annotated[int, "Maximum number of transcript chunks to return"] = 10,
+    limit: Annotated[int,
+                     "Maximum number of transcript chunks to return"] = 10,
 ) -> list[dict]:
     """
     Search transcripts within a single meeting using semantic (vector) similarity.

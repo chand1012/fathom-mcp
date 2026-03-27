@@ -174,14 +174,14 @@ public HTTPS URL in Fathom.
 
 ### Auth model
 
-- `/sync`, `/tools/*`, and `/mcp/` require:
+- `/sync`, `/tools/*`, and `/mcp/` require the shared service API key middleware:
   - `Authorization: Bearer <SERVICE_API_KEY>`
-  - `X-API-Key: <SERVICE_API_KEY>` for FastAPI routes (`/sync`, `/tools/*`)
-  - OR localhost origin for selected FastAPI routes (`/sync`, `/tools/*`).
+  - `X-API-Key: <SERVICE_API_KEY>`
 - `/webhook` requires valid Svix-style signature headers:
   - `webhook-id`
   - `webhook-timestamp`
   - `webhook-signature`
+- `/docs`, `/redoc`, and `/openapi.json` are public (unauthenticated)
 
 ### Example calls
 
@@ -362,7 +362,7 @@ main.py            # Application assembly and startup lifecycle
 
 - Do not commit `.env` or secrets.
 - Rotate `SERVICE_API_KEY` and webhook secret periodically.
-- Keep `/mcp/` behind network controls in production.
+- The middleware protects the API and mounted MCP app with the same service key.
 - Validate webhook signatures before processing payloads (already enforced).
 - Local-first reduces external data exposure by default because storage and vector search are on-box.
 

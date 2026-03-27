@@ -1,28 +1,11 @@
-"""Tests for service API key authentication."""
+"""Tests for service API key authentication middleware."""
 
 import httpx
 import pytest
-from fastapi import Depends, FastAPI, HTTPException
-from starlette.requests import Request
+from fastapi import FastAPI, HTTPException
 
-from fathom_mcp.api.router import _extract_service_api_key, require_local_or_apikey
+from fathom_mcp.core.auth import ServiceApiKeyMiddleware, extract_service_api_key
 from fathom_mcp.core.config import Settings, settings
-
-
-def _make_request(host: str) -> Request:
-    return Request(
-        {
-            "type": "http",
-            "method": "POST",
-            "path": "/sync",
-            "headers": [],
-            "client": (host, 12345),
-            "scheme": "http",
-            "server": ("testserver", 80),
-            "query_string": b"",
-            "http_version": "1.1",
-        }
-    )
 
 
 @pytest.mark.parametrize(
@@ -40,49 +23,39 @@ def test_extract_service_api_key(
     x_api_key: str | None,
     expected: str | None,
 ) -> None:
-    assert _extract_service_api_key(authorization, x_api_key) == expected
+    assert extract_service_api_key(authorization, x_api_key) == expected
 
 
 @pytest.mark.asyncio
-async def test_require_local_or_apikey_accepts_bearer_token() -> None:
-    await require_local_or_apikey(
-        _make_request("203.0.113.10"),
-        authorization=f"Bearer {settings.service_api_key}",
-    )
-
-
-@pytest.mark.asyncio
-async def test_require_local_or_apikey_accepts_x_api_key() -> None:
-    await require_local_or_apikey(
-        _make_request("203.0.113.10"),
-        x_api_key=settings.service_api_key,
-    )
-
-
-@pytest.mark.asyncio
-async def test_require_local_or_apikey_rejects_invalid_remote_key() -> None:
-    with pytest.raises(HTTPException) as exc_info:
-        await require_local_or_apikey(
-            _make_request("203.0.113.10"),
-            authorization="Bearer wrong-key",
-        )
-
-    assert exc_info.value.status_code == 401
-
-
-@pytest.mark.asyncio
-async def test_route_auth_accepts_bearer_and_x_api_key() -> None:
+async def test_middleware_protects_api_and_mcp_routes() -> None:
     app = FastAPI()
+    app.add_middleware(
+        ServiceApiKeyMiddleware,
+        service_api_key=settings.service_api_key,
+    )
 
-    @app.get("/protected", dependencies=[Depends(require_local_or_apikey)])
+    @app.get("/protected")
     async def protected() -> dict[str, bool]:
         return {"ok": True}
+
+    mcp_app = FastAPI()
+
+    @mcp_app.get("/ping")
+    async def ping() -> dict[str, bool]:
+        return {"ok": True}
+
+    @app.post("/webhook")
+    async def webhook() -> dict[str, bool]:
+        return {"ok": True}
+
+    app.mount("/mcp", mcp_app)
 
     transport = httpx.ASGITransport(app=app, client=("203.0.113.10", 12345))
     async with httpx.AsyncClient(
         transport=transport,
         base_url="http://testserver",
     ) as client:
+        unauthorized_response = await client.get("/protected")
         bearer_response = await client.get(
             "/protected",
             headers={"Authorization": f"Bearer {settings.service_api_key}"},
@@ -91,9 +64,44 @@ async def test_route_auth_accepts_bearer_and_x_api_key() -> None:
             "/protected",
             headers={"X-API-Key": settings.service_api_key},
         )
+        invalid_response = await client.get(
+            "/protected",
+            headers={"Authorization": "Bearer wrong-key"},
+        )
+        mcp_response = await client.get(
+            "/mcp/ping",
+            headers={"Authorization": f"Bearer {settings.service_api_key}"},
+        )
+        webhook_response = await client.post("/webhook")
 
+    assert unauthorized_response.status_code == 401
     assert bearer_response.status_code == 200
     assert x_api_key_response.status_code == 200
+    assert invalid_response.status_code == 401
+    assert mcp_response.status_code == 200
+    assert webhook_response.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_middleware_rejects_missing_api_key() -> None:
+    app = FastAPI()
+    app.add_middleware(
+        ServiceApiKeyMiddleware,
+        service_api_key=settings.service_api_key,
+    )
+
+    @app.get("/protected")
+    async def protected() -> dict[str, bool]:
+        return {"ok": True}
+
+    transport = httpx.ASGITransport(app=app, client=("203.0.113.10", 12345))
+    async with httpx.AsyncClient(
+        transport=transport,
+        base_url="http://testserver",
+    ) as client:
+        response = await client.get("/protected")
+
+    assert response.status_code == 401
 
 
 def test_settings_reject_placeholder_service_api_key() -> None:

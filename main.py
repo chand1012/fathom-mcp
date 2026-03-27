@@ -7,18 +7,29 @@ POST /webhook
     Receive Fathom ``newMeeting`` webhook events and store them locally.
     Validates the Svix-style HMAC-SHA256 signature before dispatching.
 
-POST /sync
-    Trigger a full download of recent meetings from the Fathom API.
-    Requires ``Authorization: Bearer <SERVICE_API_KEY>`` or localhost origin.
+POST /sync, GET /tools/*, POST|GET /mcp/
+    Protected by shared service API key middleware that accepts either
+    ``Authorization: Bearer <SERVICE_API_KEY>`` or ``X-API-Key``.
 
-/mcp
-    FastMCP endpoint (Streamable HTTP).
-    Requires ``Authorization: Bearer <SERVICE_API_KEY>``.
-    Exposes tools: search_meetings, search_transcripts,
-    search_meeting_transcripts, get_meeting, get_meeting_transcript.
+The middleware applies to both the FastAPI router and the mounted FastMCP app.
+Webhook requests remain exempt so Svix signature validation stays separate.
 """
 
 # Standard library
+from dotenv import load_dotenv
+import asyncio
+import logging
+from contextlib import asynccontextmanager
+from typing import AsyncIterator
+import uvicorn
+from fastapi import FastAPI
+from fastmcp.utilities.lifespan import combine_lifespans
+from fathom_mcp.core.auth import ServiceApiKeyMiddleware
+from fathom_mcp.api.router import router
+from fathom_mcp.core.config import settings
+from fathom_mcp.mcp.server import mcp
+from fathom_mcp.vector.database import init_database
+from fathom_mcp.vector.embedder import ensure_embedding_model
 import sys
 from pathlib import Path
 
@@ -28,19 +39,6 @@ if SRC_DIR.exists() and str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
 # Load environment variables from .env file at the very beginning
-from fathom_mcp.vector.embedder import ensure_embedding_model
-from fathom_mcp.vector.database import init_database
-from fathom_mcp.mcp.server import mcp
-from fathom_mcp.core.config import settings
-from fathom_mcp.api.router import router
-from fastmcp.utilities.lifespan import combine_lifespans
-from fastapi import FastAPI
-import uvicorn
-from typing import AsyncIterator
-from contextlib import asynccontextmanager
-import logging
-import asyncio
-from dotenv import load_dotenv
 
 load_dotenv()
 
@@ -106,6 +104,11 @@ api = FastAPI(
         "and semantic search via the Model Context Protocol."
     ),
     lifespan=combine_lifespans(app_lifespan, mcp_app.lifespan),
+)
+
+api.add_middleware(
+    ServiceApiKeyMiddleware,
+    service_api_key=settings.service_api_key,
 )
 
 api.include_router(router)
